@@ -33,7 +33,7 @@ permalink:           pretty
 
 # Setup
 tagline: 
-paginate:  1
+paginate:  10
 
 # Assets
 #
