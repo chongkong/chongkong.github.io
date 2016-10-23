@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  "Mathjax Test"
-date:   2016-10-23 07:07:41 +0900
-categories:
+title: Mathjax Test
+date: 2016-10-23 07:07:41 +0900
+categories: test-post
 mathjax: true
 ---
 Inline mathjax $x + y = 1$
