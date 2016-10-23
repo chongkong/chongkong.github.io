@@ -31,9 +31,11 @@ pre code {
 .highlight {
   padding: 1rem;
   margin-bottom: 1rem;
+  margin-left: 0;
+  margin-right: 0;
   font-size: .8rem;
   line-height: 1.4;
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: #242424;
   border-radius: .25rem;
 
   pre {
