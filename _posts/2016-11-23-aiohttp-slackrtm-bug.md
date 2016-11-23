@@ -20,12 +20,12 @@ async with self.session.ws_connect(url) as ws:
 
 실제로 디버거를 키고 Request를 찍어 보니 URL이 다르게 찍히고 있었다.
 
-```
+``` shell
 # v1.0.5
-wss://mpmulti-xu7e.slack-msgs.com/websocket/mWJePSkY9j_1Q4iiFSqdt...c0ZWCVZQY_DbY=
+wss://mpmulti-xu7e.slack-msgs.com/websocket/mWJe...DbY=
 
 # v1.1.0
-wss://mpmulti-xu7e.slack-msgs.com/websocket/mWJePSkY9j_1Q4iiFSqdt...c0ZWCVZQY_DbY%3D
+wss://mpmulti-xu7e.slack-msgs.com/websocket/mWJe...DbY%3D
 ```
 
 즉 YARL 라이브러리를 사용하면서 `=`이 `%3D`로 urlencode 되도록 바뀌었다. 문제는 `rtm.start` 슬랙 RTM API에서 반환하는 URL은 항상 `=`가 마지막에 붙어 있고 (base64인코딩) 
