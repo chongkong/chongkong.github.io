@@ -2,7 +2,9 @@
 layout: post
 title: "Slack RTM 400 Bad Request"
 date: 2016-11-23 21:42:41 +0900
-categories: bugfix 
+categories: bugfix
+tags: ['aiohttp', 'slack', 'rtm']
+comments: true
 ---
 
 slack 봇을 만들던 중 `aiohttp` 라이브러리에서 제공하는 websocket client가 동작하지 않는 상황이 있었다. 문서에서 알려준 대로 잘 사용했는데 Bad Request 응답이 왔다.
