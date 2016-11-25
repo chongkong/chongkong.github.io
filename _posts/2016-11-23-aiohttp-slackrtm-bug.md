@@ -34,3 +34,25 @@ wss://mpmulti-xu7e.slack-msgs.com/websocket/mWJe...DbY%3D
 슬랙 API에서는 `=` 대신 `%3D`를 사용하면 Bad Request를 보낸다는 것이다!
 
 일단 Slack 에 문의를 넣어두었고 당분간 1.0.5 버전을 사용하는걸로 마무리를 지었다.
+
+
+<hr>
+
+***2016-11-24***
+
+Slack에서 답변을 받았는데, 이걸 버그로 보기는 힘들 것 같으니 url encoding 단계를 제거하라고 한다.
+
+> The Websocket URL returned from rtm.start works without making any alterations. We recommend that you remove the encoding step from your workflow and try again.
+> There isn't a fix required as this is not considered a bug. I'm sorry I didn't have better news for you on this occasion.
+
+영 찜찜하지만, 다음과 같이 직접 `URL` 인스턴스를 만들어서 패스해주도록 하자
+
+``` python
+# encoded=True 은 이미 encoding된 URL이라는 의미 
+unquoted_url = URL(url, encoded=True)
+
+async with self.session.ws_connect(unquoted_url) as ws:
+    async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            print('msg', msg.data)
+```
