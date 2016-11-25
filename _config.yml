@@ -29,18 +29,18 @@ markdown: kramdown
 theme: minima
 
 # Permalinks
-permalink:           pretty
+permalink: pretty
 
 # Setup
 tagline: 
-paginate:  10
+paginate: 10
 
 # Assets
 #
 # We specify the directory for Jekyll so we can use @imports.
 sass:
-  sass_dir:          _sass
-  style:            :compressed
+  sass_dir: _sass
+  style: :compressed
 
 # About/contact
 author:
@@ -52,6 +52,7 @@ author:
 version: 2.0.0
 github:
   repo: https://github.com/chongkong/chongkong.github.io
+permalink: /:title
 
 # Gems
 gems:
