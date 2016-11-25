@@ -115,3 +115,13 @@ a[href^="#fnref:"] {
   font-size: 1.25rem;
   font-weight: 300;
 }
+
+@font-face {
+ font-family: 'NanumSquare';
+ src: url(http://hangeul.naver.com/webfont/NanumSquare/NanumSquareR.eot);
+ src: url(http://hangeul.naver.com/webfont/NanumSquare/NanumSquareR.eot?#iefix) format('embedded-opentype'),
+      url(http://hangeul.naver.com/webfont/NanumSquare/NanumSquareR.woff) format('woff'),
+      url(http://hangeul.naver.com/webfont/NanumSquare/NanumSquareR.ttf) format('truetype');
+}
+
+@import url(//spoqa.github.io/spoqa-han-sans/css/SpoqaHanSans-kr.css)
