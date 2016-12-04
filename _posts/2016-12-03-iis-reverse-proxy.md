@@ -123,8 +123,23 @@ subpath를 이용하여 프록시를 하는 경우에는 일단 호스트 이름
 
 ![url-rewrite-setting-3](assets/posts/iis-reverse-proxy/url-rewrite-setting-3.png)
 
-그러면 Inbound Rule과 Outbound Rule이 각각 하나씩 생길 것이다. subpath를 이용하여 프록시를 하는 경우 Outbound Rule에 path가 지정되지 않았으므로
-직접 Outbound Rule을 수정하여
+그러면 Inbound Rule과 Outbound Rule이 각각 하나씩 생길 것이다.
+
+Subpath를 이용하여 프록시를 하는 경우 InboundRule과 Outbound Rule에 해당 subpath를 지정해주는 작업을 해야 한다.
+
+Inbound Rule의 경우에는 
+
+``` regex
+(.*)
+```
+
+로 되어 있는 부분을
+
+``` regex
+foo/(.*)
+``` 
+
+로, Outbound Rule의 경우에는
 
 ``` url
 http{R:1}://yourdomain.com/{R:2}
