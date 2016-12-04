@@ -76,13 +76,16 @@ HTTP만으로 프록시를 구성하고 이 단계를 건너뛰면 된다. 하�
 (내가 가진 SSL 인증서는 싱글 도메인이므로 호스트 이름으로 `yourdomain.com`을 사용했다.) 또한 바인딩 종류에서 https를 선택하면 
 IIS에 등록된 인증서 중 하나를 고를 수 있는데 해당 primary domain의 와일드카드 인증서를 고르면 딱 된다. 
 
-한편 사이트는 반드시 컨텐츠 디렉터리를 설정해야 한다. 컨텐츠 디렉터리는 정적 파일들을
-서빙할 호스트의 경로를 의미하는데, 우리는 별도로 서빙할 파일이 없으니 적당한 빈 디렉터리를 가리키게 한다. (기본 경로는 `C:\inetpub\wwwroot`에 있다)
+한편 사이트는 반드시 컨텐츠 디렉터리를 설정해야 한다. 컨텐츠 디렉터리는 정적 서빙하고자 하는 정적 컨텐츠 경로를 의미하는데, 
+우리는 별도로 서빙할 파일이 없으니 적당한 빈 디렉터리를 가리키게 한다. (기본 경로는 `C:\inetpub\wwwroot`에 있다)
 
 ## ARR과 URL Rewrite 설치하기
 
 프록시를 설정하기 위해서는 [Application Request Routing 모듈](https://www.microsoft.com/en-us/download/details.aspx?id=47333)(이하 ARR)과
 [URL Rewrite 모듈](https://www.microsoft.com/en-us/download/details.aspx?id=47337)을 설치해야 한다.
+원래는 ISS에서 지원하는 웹 플랫폼 설치 관리자를 통해 설치하면 되는데, 이상하게 나는 IIS 버전이 7.0 이상이 아니라는 메시지가 뜨면서
+설치에 실패하는 바람에 직접 msi 파일을 다운로드 받아 설치했다. 일단은 웹 플랫폼 설치 관리자를 통해 설치하되, 잘 진행되지 않는다면
+위 링크에서 다운받아서 설치해보길 바란다. 
 
 ### ARR
 
@@ -116,20 +119,35 @@ ARR은 바인딩을 통해 들어온 요청을 프록시하기 위해 필요하�
 ![url-rewrite-setting-2](assets/posts/iis-reverse-proxy/url-rewrite-setting-2.png)
 
 그리고 다음과 같이 설정해 준다. 만약 서브도메인을 사용해서 프록시를 할 것이라면 `yourdomain.com` 대신 `foo.yourdomain.com`을 입력해 주면 된다.
-`yourdomain.com/foo`와 같이 프록시를 하는 경우에는 일단 호스트 이름으로는 `yourdomain.com`을 입력해 주자.
+subpath를 이용하여 프록시를 하는 경우에는 일단 호스트 이름으로는 `yourdomain.com`을 입력해 주자. 바로 다음 단계에서 path를 지정한다.
 
 ![url-rewrite-setting-3](assets/posts/iis-reverse-proxy/url-rewrite-setting-3.png)
 
-그러면 Inbound Rule과 Outbound Rule이 각각 하나씩 생길 것이다. subpath를 이용하여 프록시를 하는 경우 Outbound Rule에 path가 지정되지 않았으므로
-직접 Outbound Rule을 수정하여
+그러면 Inbound Rule과 Outbound Rule이 각각 하나씩 생길 것이다.
 
+Subpath를 이용하여 프록시를 하는 경우 InboundRule과 Outbound Rule에 해당 subpath를 지정해주는 작업을 해야 한다.
+
+Inbound Rule의 경우에는 
+
+``` regex
+(.*)
 ```
+
+로 되어 있는 부분을
+
+``` regex
+foo/(.*)
+``` 
+
+로, Outbound Rule의 경우에는
+
+``` url
 http{R:1}://yourdomain.com/{R:2}
 ```
 
 으로 되어있는 부분을
 
-```
+``` url
 http{R:1}://yourdomain.com/foo/{R:2}
 ``` 
 
