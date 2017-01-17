@@ -129,25 +129,25 @@ Subpath를 이용하여 프록시를 하는 경우 InboundRule과 Outbound Rule�
 
 Inbound Rule의 경우에는 
 
-``` regex
+```
 (.*)
 ```
 
 로 되어 있는 부분을
 
-``` regex
+```
 foo/(.*)
 ``` 
 
 로, Outbound Rule의 경우에는
 
-``` url
+```
 http{R:1}://yourdomain.com/{R:2}
 ```
 
 으로 되어있는 부분을
 
-``` url
+```
 http{R:1}://yourdomain.com/foo/{R:2}
 ``` 
 
