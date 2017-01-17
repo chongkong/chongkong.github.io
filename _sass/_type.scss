@@ -11,27 +11,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
+  margin: 2rem 0;
   font-size: 2rem;
 }
 
 h2 {
-  margin-top: 1rem;
+  margin: 1.5rem 0;
   font-size: 1.5rem;
 }
 
 h3 {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   font-size: 1.25rem;
 }
 
 h4, h5, h6 {
-  margin-top: 1rem;
+  margin: 1rem 0;
   font-size: 1rem;
 }
 
 p {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin: 1.5rem 0;
 }
 
 strong {
@@ -39,8 +39,7 @@ strong {
 }
 
 ul, ol, dl {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin: 1rem 0;
 }
 
 dt {
