@@ -80,14 +80,14 @@ $\frac{1}{n}$임을 이용하면 쉽게 구현할 수 있다.
 
 ``` go
 func Hash(key int64, numBucket int) int {
-	rand.Seed(key)
-	bucket := -1
-	for i := 0; i < numBucket; i++ {
-		if rand.Float64() < (1.0 / float64(i+1)) {
-			bucket = i
-		}
-	}
-	return bucket
+    rand.Seed(key)
+    bucket := -1
+    for i := 0; i < numBucket; i++ {
+        if rand.Float64() < (1.0 / float64(i+1)) {
+            bucket = i
+        }
+    }
+    return bucket
 }
 ```
 
@@ -168,14 +168,14 @@ $$
 
 ``` go
 func Hash2(key int64, size int) int {
-	rand.Seed(key)
-	bucket := -1
-	jumped := 0
-	for jumped < size {
-		bucket = jumped
-		jumped = int(float64(bucket+1) / rand.Float64())
-	}
-	return bucket
+    rand.Seed(key)
+    bucket := -1
+    jumped := 0
+    for jumped < size {
+        bucket = jumped
+        jumped = int(float64(bucket+1) / rand.Float64())
+    }
+    return bucket
 }
 ```
 
