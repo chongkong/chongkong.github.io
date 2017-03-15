@@ -48,7 +48,7 @@ task = asyncio.ensure_future(hello_world(), loop=loop)
 loop.run_until_complete(task)
 ```
 
-대충 감이 잡혔는가? 그렇다면 바로 task-local object를 만들어보도록 하자! 구현은 `threading.local` 를 참고하도록 하겠다.
+대충 감이 잡혔는가? 그렇다면 바로 task local object를 만들어보도록 하자! 구현은 `threading.local` 를 참고하도록 하겠다.
 
 먼저 우리가 만들고 싶은 클래스인 `TaskLocal` 은 서로 다른 `Task` 에 대해서 다른 attribute 값을 가지고 있어야 하므로 `__getattribute__` , `__setattr__` , `__delattr__` 세 개의 메소드를 오버라이딩 해야 한다. 일단 다음과 같이!
 
@@ -57,9 +57,11 @@ class TaskLocal(object):
     def __getattribute__(self, name):
         """Returns attribute of current task"""
         pass
+
     def __setattr__(self, name, value):
         """Set attribute of current task"""
         pass
+
     def __delattr__(self, name):
         """Delete attribute of current task"""
         pass
@@ -74,17 +76,18 @@ def current_task():
     return asyncio.Task.current_task()
 ```
 
-이제 실제로 각 `Task` 마다 attribute들을 저장할 방법이 필요하다. 여기서 중요한 것은 `Task` 가 완료되고 GC되는 경우에는 해당 `Task` 의 attribute들을 다 지워줘야 한다는 것이다. 그렇지 않다면 메모리에 계속 task-local 데이터가 쌓이게 되고 결국엔 메모리가 부족해져 프로그램이 더이상 실행되지 못할 것이다. 가장 간단한 방법은 `Task` 객체에 직접 attribute 데이터를 설정하는 것이다.
+이제 실제로 각 `Task` 마다 attribute들을 저장할 방법이 필요하다. 여기서 중요한 것은 `Task` 가 완료되고 GC되는 경우에는 해당 `Task` 의 attribute들을 다 지워줘야 한다는 것이다. 그렇지 않다면 메모리에 계속 task local 데이터가 쌓이게 되고 결국엔 메모리가 부족해져 프로그램이 더이상 실행되지 못할 것이다. 가장 간단한 방법은 `Task` 객체에 직접 attribute 데이터를 설정하는 것이다.
 
 ``` python
-    import asyncio
-    
-    def my_ensure_future(coroutine):
-        task = asyncio.ensure_future(coroutine)
-        task.__my_data = {}
+import asyncio
+
+def my_ensure_future(coroutine):
+    task = asyncio.ensure_future(coroutine)
+    task.__my_data = {}  # task 객체에 set!
+    return task
 ```
 
-음 확실히 이러면 task가 삭제될 경우 `__my_data` 도 같이 GC될 것이다. 하지만 이렇게 남이 구현해놓은 객체에 함부로 손을 대서는 아주 잘못될 수가 있다. 우리는 `Task` 객체랑 별도로 데이터를 관리하는게 좋다. 여기서 좋은 방법이 하나 있는데, weak reference를 사용하면 `Task` 객체를 조작하지 않고도 `Task` 가완료되면 task-local 데이터랑 바이바이를 할 수 있다!
+음 확실히 이러면 task가 삭제될 경우 `__my_data` 도 같이 GC될 것이다. 하지만 이렇게 남이 구현해놓은 객체에 함부로 손을 대서는 아주 잘못될 수가 있다. 우리는 `Task` 객체랑 별도로 데이터를 관리하는게 좋다. 여기서 좋은 방법이 하나 있는데, weak reference를 사용하면 `Task` 객체를 조작하지 않고도 `Task` 가 완료되면 task local 데이터랑 바이바이를 할 수 있다!
 
 ``` python
 import asyncio
@@ -95,7 +98,7 @@ dic = weakref.WeakKeyDictionary()
 dic[task] = 42  # task가 GC되면 dic[task]도 사라진다
 ```
 
-자 이제 재료들이 모였으니 조리를 시작해보자. 먼저 task local 객체를 최대한 pure하게 만들기 위해 실제 task-local attribute 데이터는 별도의 `TaskLocalImpl` 이라는 클래스를 두어 수행하자.
+자 이제 재료들이 모였으니 조리를 시작해보자. 먼저 task local 객체를 최대한 pure하게 만들기 위해 실제 task local attribute 데이터는 별도의 `TaskLocalImpl` 이라는 클래스를 두어 수행하자.
 
 ``` python
 import weakref
@@ -117,10 +120,13 @@ class TaskLocalImpl(object):
 class TaskLocal(object):
     def __init__(self):
         self.__impl = TaskLocalImpl()
+
     def __getattribute__(self, name):
         return self.__impl.get(asyncio.Task.current_task()).get(name)
+
     def __setattr__(self, name, value):
         return self.__impl.get(asyncio.Task.current_task()).put(name, value)
+
     def __delattr__(self, name):
         self.__impl.get(asyncio.Task.current_task()).pop(name)
 ```
@@ -131,15 +137,18 @@ class TaskLocal(object):
 class TaskLocal(object):
     def __init__(self):
         object.__setattr__(self, '_TaskLocal__impl', TaskLocalImpl())
+
     def __getattribute__(self, name):
         return object.__getattribute__(self, '_TaskLocal__impl').get(asyncio.Task.current_task()).get(name)
+
     def __setattr__(self, name, value):
         return object.__getattribute__(self, '_TaskLocal__impl').get(asyncio.Task.current_task()).put(name, value)
+
     def __delattr__(self, name):
         object.__getattribute__(self, '_TaskLocal__impl').get(asyncio.Task.current_task()).pop(name)
 ```
 
-한편 각 메소드에서 직접 dictionary를 get하기보다는, `TaskLocal.__dict__` 를 매 호출시마다 task local data로 덮어씌워주는편이 자연스럽다. 비록 attribute 접근 메소드들을 전부 재구현하지만 실제로 `TaskLocal` 객체가 해당 attribute들을 갖게 되는거니까.
+한편 각 메소드에서 직접 dictionary를 get하기보다는, `TaskLocal.__dict__` 를 매 호출시마다 task local data로 덮어씌워주는편이 자연스럽다. 비록 attribute 접근 메소드들을 전부 재구현하지만 실제로 `TaskLocal` 객체가 해당 attribute들을 갖게 되는거니까. (그리고 dictionary get을 하면 길어지잖아!)
 
 ``` python
 import asyncio
@@ -152,12 +161,15 @@ def patch(local):
 class TaskLocal(object):
     def __init__(self):
         object.__setattr__(self, '_TaskLocal__impl', TaskLocalImpl())
+
     def __getattribute__(self, name):
         patch(self)
         return object.__getattribute__(self, name)
+
     def __setattr__(self, name, value):
         patch(self)
         return object.__setattr__(self, name, value)
+
     def __delattr__(self, name):
         patch(self)
         return object.__delattr__(self, name)
@@ -165,7 +177,7 @@ class TaskLocal(object):
 
 엇 여기 문제가 하나 있다. 일반적으로 `__getattribute__` , `__setattr__` , `__delattr__` 메소드들은 atomic하지만 이렇게 오버라이딩을 하는 경우에는 atomicity가 보장되지 않는다. 락 등의 synchronization 메커니즘이 필요한데, `threading` 에서 제공하는 `Lock` 을 사용해보도록 하자.
 
-`threading.Lock` 은 `acquire()` 와 `release()` 를 호출해줘야 하는데 파이썬의 with 구문을 사용하면 좀더 우아하게 함수를 구현할 수 있다.
+`threading.Lock` 은 `acquire()` 와 `release()` 를 호출해줘야 하는데 파이썬의 with 구문을 사용하면 좀더 우아하게 사용할 수 있다.
 
 ``` python
 import threading
@@ -177,7 +189,7 @@ with thread_lock:
 ```
 
 이 `Lock` 을 `ThreadLocalImpl` 에 넣어두고 사용하도록 하자.
-참고로 `threading.local` 은 `Lock` 이 아니라 같은 쓰레드에서는 락 내부로 진입할 수 있는 `threading.RLock` (Reenterable Lock) 을 사용했는데, 이는 thread local은 같은 쓰레드간에는 락이 필요 없기 때문이다. 우리는 같은 쓰레드라도 서로 다른 `Task` 를 수행중일 수 있기 때문에 `Lock` 을 사용해야 한다.
+참고로 `threading.local` 은 `Lock` 이 아니라 같은 쓰레드에서는 락 내부로 진입할 수 있는 `threading.RLock` (Reenterable Lock) 을 사용했는데, 이는 동일한 쓰레드가 thread local을 사용할 때는 락이 필요 없기 때문이다. 우리는 같은 쓰레드라도 서로 다른 `Task` 를 수행중일 수 있기 때문에 `Lock` 을 사용해야 한다.
 
 ``` python
 import weakref
@@ -211,17 +223,19 @@ class TaskLocal(object):
     def __init__(self):
         object.__setattr__(self, '_TaskLocal__impl', TaskLocalImpl())
     def __getattribute__(self, name):
-        with patch(self):
+        with patch(self):  # within impl.lock
             return object.__getattribute__(self, name)
+
     def __setattr__(self, name, value):
-        with patch(self):
+        with patch(self):  # within impl.lock
             return object.__setattr__(self, name, value)
+
     def __delattr__(self, name):
-        with patch(self):
+        with patch(self):  # within impl.lock
             return object.__delattr__(self, name)
 ```
 
-음 아직도 버그가 있다. `_TaskLocal__impl` 이 `__dict__` 에 저장되기 때문에 `local.__dict__` 를 새 dictionary로 set할 경우 `_TaskLocal__impl` 이 날아가버린다. 여러 방법이 있지만, `threading.local` 에서 사용하는 꽤 괜찮은 방법은 `__slots__` 를 이용하는 것이다. `__slots__` 에 등록된 변수명은 `__dict__` 에 포함되지 않는다. 또한 `__slots__` 필드가 있는 클래스는 `__dict__` 를 자동으로 만들지 않는데, 이는 `__slots__` 에 `'``__dict__'` 를 포함시킴으로서 해결할 수 있다.
+다 된 것 같아 보이는가? 아직 한 가지 작업을 더 해주어야 하는데, 현재 구현에서는 `_TaskLocal__impl` 이 `__dict__` 에 저장되기 때문에 `local.__dict__` 를 새 dictionary로 set할 경우 `_TaskLocal__impl` 이 날아가버린다. 여러 방법이 있지만, `threading.local` 에서 사용하는 꽤 괜찮은 방법은 `__slots__` 를 이용하는 것이다. `__slots__` 에 등록된 변수명은 `__dict__` 에 포함되지 않는다. 다만 `__slots__` 필드가 있는 클래스는 `__dict__` 를 자동으로 만들지 않는데, 우리는 `__dict__` 필드가 필요하다. 이는 `__slots__` 에 `'``__dict__'` 를 포함시킴으로서 해결할 수 있다.
 
 ``` python
 class TaskLocal(object):
@@ -276,7 +290,7 @@ class TaskLocal(object):
             return object.__delattr__(self, name)
 ```
 
-여기까지 구현한 것으로 다음과 같이 task local object를 만들 수 있다
+음.. 생각보다 짧다. 여기까지 구현한 것으로 다음과 같이 task local object를 만들 수 있다
 
 ``` python
 import asyncio
@@ -287,7 +301,7 @@ async def some_coroutine():
     await asyncio.sleep(local_obj.sleep_seconds)
 ```
 
-하지만 `threading.local` 에는 있지만, 아직 구현되지 않은 부분이 있는데, 바로 `TaskLocal` 객체를 상속한 클래스도 task local object가 되도록 하는 것이다. 이를 위해서는 `TaskLocal` 의 `__init__` 함수 내용을 `__new__` 로 옮겨야 한다.
+신난다! 하지만 아직 구현하지 못한 `threading.local` 의 기능이 있는데, 바로 `TaskLocal` 객체를 상속한 클래스도 task local object가 되도록 하는 것이다. 이를 위해서는 `TaskLocal` 의 `__init__` 함수 내용을 `__new__` 로 옮겨야 한다.
 
 ``` python
 class TaskLocal(object):
@@ -329,7 +343,9 @@ def patch(local):
         yield
 ```
 
-여기서 `self.__init__` 을 그냥 불러도 될까? 잘 생각해보면 `__getattribute__` 의 루프에 빠지지 않고 `__init__` 함수를 잘 가져옴을 알 수 있다. 또한 `self.__init__` 를 호출할 때 새로 만든 attribute data가 (즉 `__dict__` 가) 적용되므로 `self.__init__(*args, **kwargs)` 가 `object.__setattr__(local,` `'``__dict__', attrs)` 이전에 불려도 상관이 없다. 호출 순서를 그려보면 다음과 같다
+잠깐! 여태까지 `__getattribute__` 반복을 피하기 위해 `TaskLocal`의 메소드들을 직접 호출하지 않고 `object.<함수명>`을 사용했는데 여기서 다짜고짜 `self.__init__` 을 그냥 불러도 될까? 
+
+잘 생각해보면 `__getattribute__` 의 루프에 빠지지 않고 `__init__` 함수를 잘 가져옴을 알 수 있다. 또한 `self.__init__` 를 호출할 때 새로 만든 attribute data가 (즉 `__dict__` 가) 적용되므로 `self.__init__(*args, **kwargs)` 가 `object.__setattr__(local,` `'``__dict__', attrs)` 이전에 불려도 상관이 없다. 호출 순서를 그려보면 다음과 같다.
 
 ``` python
 # call my_local.x first time in new thread
@@ -344,7 +360,9 @@ my_local.__getattribute__('x')
         ⤷ my_local.__init__(*args, **kwargs)  # happy ending
 ```
 
-마지막으로, 사용자가 엄하게 사용하는 것을 방어하는 코드를 추가해 보자
+여기까지 읽느라 머리가 아파서 이해하고 싶지 않다면 그냥 넘어가도 좋다. 
+
+마지막으로, 사용자가 엄하게 사용하는 것을 방어하는 코드를 추가해 보자.
 
 ``` python
 class TaskLocal(object):
@@ -459,7 +477,7 @@ def patch(local, task=None):
         yield
 ```
 
-프록시 클래스를 이용하는 방법을 사용하겠다. `TaskLocal` 의 `__getitem__` 은 프록시 클래스를 리턴해야 한다.
+이제 `patch(self)` 대신 `patch(self, task)`를 호출하면 되는데, 이를 `TaskLocal` 클래스가 아닌 별도의 프록시 클래스를 이용해서 구현하자. `TaskLocal` 의 `__getitem__` 은 프록시 클래스를 리턴해야 한다.
 
 ``` python
 class TaskLocal(object):
