@@ -13,10 +13,12 @@ comments: true
 ``` python
 import threading
 
+# 1. 직접 threading.local() 호출하기
 local_obj = threading.local()
 local_obj.x = 42
 print(local_obj.x)
 
+# 2. threading.local을 상속하는 클래스 사용하기
 class ThreadLocalObject(threading.local)
     pass
 
